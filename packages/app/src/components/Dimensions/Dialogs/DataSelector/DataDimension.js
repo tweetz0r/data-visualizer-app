@@ -20,7 +20,11 @@ import {
 import { sGetUiItems } from '../../../../reducers/ui';
 import { sGetDisplayNameProperty } from '../../../../reducers/settings';
 
-import { acRemoveUiItems, acAddUiItems } from '../../../../actions/ui';
+import {
+    acRemoveUiItems,
+    acAddUiItems,
+    acSetUiItems,
+} from '../../../../actions/ui';
 import { acAddMetadata } from '../../../../actions/metadata';
 
 import {
@@ -188,6 +192,17 @@ export class DataDimension extends Component {
         });
     };
 
+    reorderSelectedItems = (startIndex, endIndex) => {
+        const items = Array.from(this.props.selectedItems);
+        const [removed] = items.splice(startIndex, 1);
+        items.splice(endIndex, 0, removed);
+
+        this.props.setDxItems({
+            dimensionType: dxId,
+            items,
+        });
+    };
+
     render = () => {
         const unselected = this.state.items.filter(di =>
             this.state.unselectedIds.includes(di.id)
@@ -233,6 +248,7 @@ export class DataDimension extends Component {
                         items={this.props.selectedItems}
                         dialogId={dxId}
                         onDeselect={this.deselectDataDimensions}
+                        onReorder={this.reorderSelectedItems}
                     />
                 </DialogContent>
             </Fragment>
@@ -258,6 +274,7 @@ export default connect(
     {
         removeDxItems: acRemoveUiItems,
         addDxItems: acAddUiItems,
+        setDxItems: acSetUiItems,
         addMetadata: acAddMetadata,
     }
 )(DataDimension);

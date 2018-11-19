@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import i18n from '@dhis2/d2-i18n';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 import { Item } from './Item';
 import { UnAssignButton, DeselectAllButton } from './buttons';
@@ -17,6 +18,14 @@ const Subtitle = () => (
     </div>
 );
 
+const getItemStyle = (isDragging, draggableStyle) => ({
+    userSelect: 'none',
+
+    // change background colour if dragging
+    // background: isDragging ? 'lightgreen' : 'grey',
+
+    ...draggableStyle,
+});
 export class SelectedItems extends Component {
     state = { highlighted: [], lastClickedIndex: 0 };
 
@@ -38,6 +47,14 @@ export class SelectedItems extends Component {
         this.setState({ highlighted: [] });
     };
 
+    onDragEnd = result => {
+        if (!result.destination) {
+            return;
+        }
+
+        this.props.onReorder(result.source.index, result.destination.index);
+    };
+
     toggleHighlight = (isCtrlPressed, isShiftPressed, index, id) => {
         const newState = toggler(
             id,
@@ -56,22 +73,33 @@ export class SelectedItems extends Component {
     };
 
     renderListItem = (id, index) => (
-        <li
-            className="dimension-item"
-            id={id}
-            key={id}
-            onDoubleClick={() => this.onRemoveSelected(id)}
-        >
-            <Item
-                id={id}
-                index={index}
-                displayName={this.props.metadata[id].name}
-                isHighlighted={!!this.state.highlighted.includes(id)}
-                onItemClick={this.toggleHighlight}
-                onRemoveItem={this.onRemoveSelected}
-                className="selected"
-            />
-        </li>
+        <Draggable key={id} draggableId={id} index={index}>
+            {(provided, snapshot) => (
+                <li
+                    className="dimension-item"
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    id={id}
+                    key={id}
+                    onDoubleClick={() => this.onRemoveSelected(id)}
+                    style={getItemStyle(
+                        snapshot.isDragging,
+                        provided.draggableProps.style
+                    )}
+                >
+                    <Item
+                        id={id}
+                        index={index}
+                        displayName={this.props.metadata[id].name}
+                        isHighlighted={!!this.state.highlighted.includes(id)}
+                        onItemClick={this.toggleHighlight}
+                        onRemoveItem={this.onRemoveSelected}
+                        className="selected"
+                    />
+                </li>
+            )}
+        </Draggable>
     );
 
     render = () => {
@@ -82,7 +110,15 @@ export class SelectedItems extends Component {
         return (
             <div style={styles.container}>
                 <Subtitle />
-                <ul style={styles.list}>{dataDimensions}</ul>
+                <DragDropContext onDragEnd={this.onDragEnd}>
+                    <Droppable droppableId="droppable">
+                        {(provided, snapshot) => (
+                            <ul ref={provided.innerRef} style={styles.list}>
+                                {dataDimensions}
+                            </ul>
+                        )}
+                    </Droppable>
+                </DragDropContext>
                 <UnAssignButton
                     className={this.props.className}
                     action={this.onDeselectClick}
@@ -96,6 +132,7 @@ export class SelectedItems extends Component {
 SelectedItems.propTypes = {
     items: PropTypes.array.isRequired,
     onDeselect: PropTypes.func.isRequired,
+    onReorder: PropTypes.func.isRequired,
 };
 
 const mapStateToProps = state => ({
